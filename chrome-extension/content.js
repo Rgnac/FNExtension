@@ -149,7 +149,7 @@ function flashBackgroundRed(parentElement) {
 }
 
 // Function to safely process score changes with a global lock to prevent duplicates
-function processSafeScoreChange(scoreChild, parentDiv, currentScore, sportEventName) {
+function processSafeScoreChange(scoreChild, parentDiv, currentScore, sportEventName, scoringTeam = "unknown") {
   // If we're already processing an event, ignore this one
   if (globalProcessingEvent) {
     console.log("Already processing an event - ignoring duplicate");
@@ -186,14 +186,30 @@ function processSafeScoreChange(scoreChild, parentDiv, currentScore, sportEventN
     const safeScore = currentScore || "Unknown Score";
     const safeEventName = sportEventName || "";
     
-    console.log(`Processing score change: ${safeScore}, Event: ${safeEventName}`);
+    console.log(`Processing score change: ${safeScore}, Event: ${safeEventName}, Scoring team: ${scoringTeam}`);
+    
+    // Process the team names
+    let processedEventName = safeEventName;
+    if (scoringTeam !== "unknown" && safeEventName.includes("—")) {
+      const teams = safeEventName.split("—").map(team => team.trim());
+      if (teams.length === 2) {
+        // Bold the scoring team name
+        if (scoringTeam === "home") {
+          processedEventName = `<b>${teams[0]}</b> — ${teams[1]}`;
+        } else if (scoringTeam === "away") {
+          processedEventName = `${teams[0]} — <b>${teams[1]}</b>`;
+        }
+      }
+    }
     
     // Log the change to a new tab
     logScoreChange({
       eventName: 'Goal', // Always set to "Goal" as requested
       score: safeScore,
-      message: safeEventName, // Set the inner text of the <a> tag as message
+      message: processedEventName, // Set the inner text of the <a> tag as message with bold team
+      scoringTeam: scoringTeam,
       isScoreChange: true,
+      isHtml: true, // Indicate that the message contains HTML
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -319,6 +335,32 @@ function initFonbetNotification() {
             scoreHistory.pop();
           }
           
+          // Determine which team scored by comparing the scores
+          let scoringTeam = "unknown";
+          try {
+            // Parse scores like "2:1" into arrays of numbers
+            const oldScoreParts = lastScore.split(':').map(num => parseInt(num, 10));
+            const newScoreParts = currentScore.split(':').map(num => parseInt(num, 10));
+            
+            // If we have valid score parts and there's a difference
+            if (oldScoreParts.length === 2 && newScoreParts.length === 2 && 
+               !isNaN(oldScoreParts[0]) && !isNaN(oldScoreParts[1]) &&
+               !isNaN(newScoreParts[0]) && !isNaN(newScoreParts[1])) {
+              
+              // Compare home team score
+              if (newScoreParts[0] > oldScoreParts[0]) {
+                scoringTeam = "home";
+              } 
+              // Compare away team score
+              else if (newScoreParts[1] > oldScoreParts[1]) {
+                scoringTeam = "away";
+              }
+            }
+          } catch (parseError) {
+            console.error(`Error parsing scores: ${lastScore} vs ${currentScore}`, parseError);
+            scoringTeam = "unknown";
+          }
+          
           // Update tracking variables
           lastScore = currentScore;
           lastEventTime = now;
@@ -328,8 +370,8 @@ function initFonbetNotification() {
             const sportEventNameElement = parentDiv.querySelector('a.sport-event__name--YAs00');
             const sportEventName = sportEventNameElement ? sportEventNameElement.textContent.trim() : '';
             
-            // Process the score change safely
-            processSafeScoreChange(scoreChild, parentDiv, currentScore, sportEventName);
+            // Process the score change safely with scoring team info
+            processSafeScoreChange(scoreChild, parentDiv, currentScore, sportEventName, scoringTeam);
           } catch (error) {
             console.error(`[${elementId}] Error processing score change:`, error);
           }
@@ -367,12 +409,16 @@ function debugTriggerTestEvent() {
     if (scoreChild) {
       console.log('Debug: Manually triggering test event');
       const parentDiv = testDiv;
-      const currentScore = "TEST-" + new Date().getSeconds();
+      const currentScore = "2:1";
       const sportEventNameElement = parentDiv.querySelector('a.sport-event__name--YAs00');
-      const sportEventName = sportEventNameElement ? sportEventNameElement.textContent.trim() : 'Test Event';
+      const sportEventName = sportEventNameElement ? sportEventNameElement.textContent.trim() : 'Team A — Team B';
+      
+      // For debug purposes, alternate between home and away team scoring
+      const testTime = new Date().getSeconds();
+      const scoringTeam = (testTime % 2 === 0) ? "home" : "away";
       
       // Process a test score change
-      processSafeScoreChange(scoreChild, parentDiv, currentScore, sportEventName);
+      processSafeScoreChange(scoreChild, parentDiv, currentScore, sportEventName, scoringTeam);
     }
   }
 }

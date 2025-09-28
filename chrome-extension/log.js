@@ -97,7 +97,14 @@ function addLogEntry(data) {
   if (data.message) {
     const message = document.createElement('div');
     message.className = 'event-message';
-    message.textContent = data.message;
+    
+    // Check if the message contains HTML (like bold tags)
+    if (data.isHtml) {
+      message.innerHTML = data.message;
+    } else {
+      message.textContent = data.message;
+    }
+    
     content.appendChild(message);
   }
   
