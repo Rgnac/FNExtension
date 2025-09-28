@@ -30,6 +30,9 @@
     "activeTab",
     "tabs"
   ],
+  "host_permissions": [
+    "https://live.kawarji.com/"
+  ],
   "web_accessible_resources": [
     {
       "resources": ["log.html", "log.js"],

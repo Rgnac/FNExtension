@@ -142,6 +142,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep the message channel open for the async response
   }
   
+  if (message.action === 'fetchTunisD1' && message.url) {
+    console.log('Background script fetching Tunis D1 content from:', message.url);
+    
+    fetch(message.url)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch content');
+        }
+        return response.text();
+      })
+      .then(html => {
+        sendResponse({ success: true, html: html });
+      })
+      .catch(error => {
+        console.error('Background script fetch error:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+      
+    return true; // Keep the message channel open for the async response
+  }
+  
   if (message.action === 'logScoreChange') {
     // Add a unique message ID if it doesn't have one
     if (!message.messageId) {

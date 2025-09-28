@@ -2,7 +2,7 @@
 const targetDivs = document.querySelectorAll('.sport-base-event__main--FHhdx');
 
 // Preload the sound in JavaScript
-const sound = new Audio('https://www.soundjay.com/buttons/sounds/button-44.mp3'); // Replace with the path to your sound file
+const sound = new Audio('E:/repo/FNExtension/chrome-extension/sounds/button-44.mp3'); // Local sound file
 sound.preload = 'auto';
 
 // Function to change the font color of the child to blue

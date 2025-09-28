@@ -17,7 +17,7 @@ chrome.runtime.sendMessage({
 });
 
 // Global audio for sound notification
-const sound = new Audio('https://www.soundjay.com/buttons/sounds/button-44.mp3');
+const sound = new Audio(chrome.runtime.getURL('sounds/button-44.mp3'));
 sound.preload = 'auto';
 
 // Global object to store all message handlers

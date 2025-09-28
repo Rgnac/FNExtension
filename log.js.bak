@@ -68,8 +68,6 @@ function addLogEntry(data) {
   logEntry.className = 'log-entry';
   if (data.isScoreChange) {
     logEntry.classList.add('highlight');
-    // Play sound notification for score changes
-    playNotificationSound();
   }
   
   // Create timestamp
