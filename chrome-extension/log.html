@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fonbet Change Log</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8f8f8;
+      color: #333;
+    }
+    h1 {
+      color: #1a73e8;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .log-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .log-entry {
+      background-color: white;
+      border-left: 4px solid #1a73e8;
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      animation: fadeIn 0.5s;
+    }
+    .log-entry.highlight {
+      border-left-color: #f44336;
+      background-color: #fff8f8;
+    }
+    .timestamp {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+    .content {
+      font-size: 14px;
+    }
+    .score {
+      font-weight: bold;
+      font-size: 16px;
+      color: #1a73e8;
+    }
+    .score.changed {
+      color: #f44336;
+    }
+    .event-name {
+      font-weight: bold;
+    }
+    .event-message {
+      margin-top: 5px;
+      padding: 5px 8px;
+      background-color: #f8f8f8;
+      border-left: 3px solid #4caf50;
+      font-size: 14px;
+      font-style: italic;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .no-logs {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    .status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background-color: #4caf50;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="log-container">
+    <h1>Fonbet Score Change Log</h1>
+    <div class="status" id="status">Monitoring Active</div>
+    <div id="logs">
+      <div class="no-logs">No changes detected yet. Keep this tab open to record changes.</div>
+    </div>
+  </div>
+
+  <script src="log.js"></script>
+</body>
+</html>
