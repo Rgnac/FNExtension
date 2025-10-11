@@ -10,21 +10,42 @@ document.addEventListener('DOMContentLoaded', () => {
   // Check if content script is ready by sending a ping message
   function checkContentScriptReady(tabId) {
     return new Promise((resolve) => {
+      console.log("Checking if content script is ready in tab", tabId);
+      let resolved = false;
+      
       try {
+        // Send ping message to content script
         chrome.tabs.sendMessage(tabId, { ping: true }, (response) => {
           if (chrome.runtime.lastError) {
-            resolve(false);
-          } else {
-            resolve(true);
+            console.log("Error checking content script:", chrome.runtime.lastError);
+            if (!resolved) {
+              resolved = true;
+              resolve(false);
+            }
+            return;
+          }
+          
+          console.log("Received response from content script:", response);
+          if (!resolved) {
+            resolved = true;
+            resolve(response && response.pong === true);
           }
         });
         
         // Set timeout in case we don't get a response
         setTimeout(() => {
-          resolve(false);
-        }, 1000);
+          if (!resolved) {
+            console.log("Timeout waiting for content script response");
+            resolved = true;
+            resolve(false);
+          }
+        }, 2000); // Extended timeout
       } catch (e) {
-        resolve(false);
+        console.error("Exception checking content script:", e);
+        if (!resolved) {
+          resolved = true;
+          resolve(false);
+        }
       }
     });
   }
@@ -46,16 +67,27 @@ document.addEventListener('DOMContentLoaded', () => {
       // First check if content script is ready
       checkContentScriptReady(activeTab.id).then(isReady => {
         if (!isReady) {
-          statusElement.textContent = 'Content script not ready. Refresh the page and try again.';
+          statusElement.textContent = 'Content script not ready. Trying to inject it...';
           
-          // Offer to refresh the page
-          setTimeout(() => {
-            if (confirm('Content script not ready. Would you like to refresh the page?')) {
-              chrome.tabs.reload(activeTab.id, {}, function() {
-                statusElement.textContent = 'Page refreshed. Please try again in a moment.';
-              });
+          // Try to inject the content script regardless of site
+          injectContentScript(activeTab.id).then(injected => {
+            if (injected) {
+              // Verify it's ready after a brief delay
+              setTimeout(() => {
+                checkContentScriptReady(activeTab.id).then(readyNow => {
+                  if (readyNow) {
+                    statusElement.textContent = 'Content script injected successfully!';
+                    // Now try to initialize
+                    sendInitMessage(activeTab.id);
+                  } else {
+                    offerRefresh(activeTab.id);
+                  }
+                });
+              }, 500);
+            } else {
+              offerRefresh(activeTab.id);
             }
-          }, 500);
+          });
           return;
         }
         
@@ -93,6 +125,72 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   });
+  
+  // Function to inject content script manually
+  function injectContentScript(tabId) {
+    return new Promise((resolve) => {
+      try {
+        chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          files: ['content.js']
+        }, (results) => {
+          if (chrome.runtime.lastError) {
+            console.error("Error injecting content script:", chrome.runtime.lastError);
+            resolve(false);
+          } else {
+            console.log("Content script injected successfully:", results);
+            resolve(true);
+          }
+        });
+      } catch (e) {
+        console.error("Exception injecting content script:", e);
+        resolve(false);
+      }
+    });
+  }
+  
+  // Function to send initialization message
+  function sendInitMessage(tabId) {
+    try {
+      chrome.tabs.sendMessage(
+        tabId,
+        { action: 'performAction' },
+        (response) => {
+          const error = chrome.runtime.lastError;
+          if (error) {
+            console.error('Error sending init message:', error);
+            statusElement.textContent = 'Error: ' + (error.message || 'Unknown error');
+          } else if (response && response.success) {
+            statusElement.textContent = 'Action completed successfully!';
+          } else {
+            statusElement.textContent = 'Action failed. Please try again.';
+          }
+          
+          // Clear status message after 3 seconds
+          setTimeout(() => {
+            statusElement.textContent = '';
+          }, 3000);
+        }
+      );
+    } catch (err) {
+      console.error('Error sending init message:', err);
+      statusElement.textContent = 'Error: ' + err.message;
+    }
+  }
+  
+  // Function to offer page refresh
+  function offerRefresh(tabId) {
+    statusElement.textContent = 'Content script not ready. Refresh the page and try again.';
+    
+    // Offer to refresh the page
+    setTimeout(() => {
+      if (confirm('Content script not ready. Would you like to refresh the page?')) {
+        chrome.tabs.reload(tabId, {}, function() {
+          statusElement.textContent = 'Page refreshed. Please try again in a moment.';
+        });
+      }
+    }, 500);
+  }
   
   // You can also send messages to the background script
   function sendMessageToBackground() {

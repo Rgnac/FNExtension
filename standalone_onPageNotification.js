@@ -1,32 +1,83 @@
-// Select all div elements with the class 'sport-base-event__main--FHhdx'\
+// Add CSS for minimalist animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes minimalistFlash {
+    0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); background-color: #ffebee; }
+    70% { box-shadow: 0 0 0 10px rgba(255,0,0,0); background-color: #ffebee; }
+    100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); background-color: transparent; }
+  }
+  
+  .score-changed {
+    animation: minimalistFlash 2s ease-out forwards !important;
+    position: relative;
+    background-color: #ffebee !important;
+    transition: background-color 2s ease !important;
+  }
+  
+  .score-changed::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid #ff3333;
+    border-radius: 3px;
+    opacity: 0;
+    pointer-events: none;
+    animation: fadeInOut 2s ease-out;
+  }
+  
+  @keyframes fadeInOut {
+    0% { opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  
+  /* Add cursor style to scores for testing */
+  .event-block-score__score--r0ZU9 {
+    cursor: pointer;
+  }
+`;
+document.head.appendChild(style);
+
+// Select all div elements with the class 'sport-base-event__main--FHhdx'
 const targetDivs = document.querySelectorAll('.sport-base-event__main--FHhdx');
 
 // Preload the sound in JavaScript
-const sound = new Audio('E:/repo/FNExtension/chrome-extension/sounds/button-44.mp3'); // Local sound file
+const sound = new Audio(chrome.runtime.getURL('sounds/button-44.mp3')); // Use relative path with chrome.runtime.getURL
 sound.preload = 'auto';
 
-// Function to change the font color of the child to blue
+// Function to set minimalist highlighting for score elements
 function setInitialFontColor(element) {
-  element.style.color = 'lightblue';
+  element.style.color = '#2196F3'; // Material Blue - more subtle than lightblue
+  element.style.fontWeight = '600'; // Semi-bold instead of full bold
 }
 
-// Function to change the background color to red for 5 seconds and then smoothly revert over 2 seconds
+// Function to create a minimalist flash notification effect
 function flashBackgroundRed(parentElement) {
-  const originalBackground = window.getComputedStyle(parentElement).backgroundColor; // Get the computed original background color
+  // First remove the class if it exists to reset animation
+  parentElement.classList.remove('score-changed');
   
-  // Set a transition for the background color (for smooth reverting over 2 seconds)
-  parentElement.style.transition = 'background-color 2s ease';
-
-  // Change background to red
-  parentElement.style.backgroundColor = 'red';
-
+  // Force a reflow to restart the animation properly
+  void parentElement.offsetWidth;
+  
+  // Add a subtle flash effect using a class
+  parentElement.classList.add('score-changed');
+  
+  // Add direct style changes as well for older browsers or in case CSS animations fail
+  parentElement.style.backgroundColor = '#ffebee';
+  parentElement.style.transition = 'background-color 2s';
+  
   // Play the sound
-  sound.play();
+  sound.play().catch(err => console.log('Sound play error:', err));
 
-  // After 5 seconds, revert the background color smoothly over 2 seconds
+  // Remove the class after animation completes
   setTimeout(() => {
-    parentElement.style.backgroundColor = originalBackground;
-  }, 5000);
+    parentElement.classList.remove('score-changed');
+    parentElement.style.backgroundColor = '';
+  }, 2000);
 }
 
 // Set initial font color for all score elements
@@ -36,6 +87,12 @@ targetDivs.forEach(parentDiv => {
   if (scoreChild) {
     // Set the font color to blue at the beginning
     setInitialFontColor(scoreChild);
+
+    // Add click event for testing (click on score to trigger flash)
+    scoreChild.addEventListener('click', (e) => {
+      e.preventDefault();
+      flashBackgroundRed(parentDiv);
+    });
 
     // Set up a MutationObserver to detect changes in text content of the child
     const observer = new MutationObserver((mutationsList, observer) => {

@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fonbet Change Log</title>
+  <link rel="stylesheet" href="dark-mode.css">
+  <link rel="stylesheet" href="german-scraper.css">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -101,6 +103,7 @@
     
     .content-container {
       display: flex;
+      flex-wrap: wrap;
       gap: 20px;
     }
     
@@ -452,18 +455,24 @@
         flex-direction: column;
       }
       
-      .tunis-d1-container {
+      .tunis-d1-container,
+      .german-scraper-container {
         max-width: none;
+        margin-top: 20px;
       }
     }
   </style>
 </head>
 <body>
   <div class="log-container">
-    <h1>Fonbet Score Change Log</h1>
+    <h1>FNExtension</h1>
     <div class="status" id="status">Monitoring Active</div>
+    <div id="theme-toggle" class="theme-toggle">Dark Mode</div>
     <div class="controls">
       <button id="add-tunis-d1-btn" class="action-btn">Add Tunisia Column</button>
+      <button id="german-scraper-btn" class="action-btn" style="margin-left: 10px; background-color: #4caf50;">German Scraper</button>
+      <button id="test-sound-btn" class="action-btn" style="margin-left: 10px;">Test Sound</button>
+      <button id="test-log-btn" class="action-btn" style="margin-left: 10px; background-color: #4caf50;">Test Log Entry</button>
       <div class="refresh-controls" id="refresh-controls" style="display: none; margin-top: 10px;">
         <label for="refresh-interval">Refresh interval (minutes): </label>
         <input type="number" id="refresh-interval" min="1" max="60" value="5" style="width: 60px; margin-right: 10px;">
@@ -483,9 +492,89 @@
           <div class="loading">Loading Tunisia content...</div>
         </div>
       </div>
+      <div id="german-scraper-container" class="german-scraper-container" style="display: none;">
+        <div class="german-header">
+          <h2>German Scraper</h2>
+          <div class="german-refresh-info">
+            Last refresh: <span id="german-last-refresh-time">-</span><br>
+            Next refresh: <span id="german-next-refresh-time">-</span>
+          </div>
+        </div>
+        <div class="german-controls">
+          <div class="german-url-input">
+            <input type="text" id="german-url-input" placeholder="Enter fupa.net URL (e.g., https://www.fupa.net/match/sv-schalding-heining-m1-fc-deisenhofen-m1-251011)" />
+            <button id="german-add-url-btn">Add</button>
+          </div>
+          <div id="german-url-list" class="german-url-list">
+            <!-- URLs will be added here dynamically -->
+          </div>
+          <div id="german-refresh-controls" class="german-refresh-controls">
+            <label for="german-refresh-interval">Refresh interval (minutes): </label>
+            <input type="number" id="german-refresh-interval" min="1" max="60" value="5" />
+            <button id="german-apply-refresh-btn">Apply</button>
+            <button id="german-refresh-now-btn">Refresh Now</button>
+          </div>
+        </div>
+        <div id="german-content">
+          <!-- Content will be loaded here -->
+          <div class="no-data">No URLs added yet. Add a fupa.net match URL above to get started.</div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script src="log.js"></script>
+  <script src="log-debug.js"></script>
+  <script src="dark-mode-fix.js"></script>
+  <script src="german-scraper.js"></script>
+  <script>
+    // Original dark mode toggle functionality - Using a self-executing function for immediate execution
+    (function() {
+      console.log("Initializing dark mode");
+      
+      function initDarkMode() {
+        const themeToggle = document.getElementById('theme-toggle');
+        if (!themeToggle) {
+          console.error("Theme toggle not found in DOM");
+          return;
+        }
+        
+        console.log("Theme toggle found:", themeToggle);
+        const body = document.body;
+        
+        // Check for saved theme preference or use system preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          console.log("Applying dark mode from saved preference");
+          body.classList.add('dark-mode');
+          themeToggle.textContent = 'Light Mode';
+        }
+        
+        // Toggle theme when button is clicked
+        themeToggle.addEventListener('click', function(e) {
+          console.log("Theme toggle clicked");
+          body.classList.toggle('dark-mode');
+          const isDarkMode = body.classList.contains('dark-mode');
+          console.log("Dark mode is now:", isDarkMode);
+          
+          // Update button text
+          themeToggle.textContent = isDarkMode ? 'Light Mode' : 'Dark Mode';
+          
+          // Save preference
+          localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+        });
+      }
+      
+      // Try immediately
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDarkMode);
+      } else {
+        initDarkMode();
+      }
+      
+      // Also try after a delay as a fallback
+      setTimeout(initDarkMode, 1000);
+    })();
+  </script>
 </body>
 </html>

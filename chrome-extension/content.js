@@ -65,6 +65,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   
   // Handle ping messages quickly to check if content script is responsive
   if (message.ping === true) {
+    console.log("Received ping - responding immediately with pong");
     sendResponse({ pong: true });
     return true;
   }
@@ -97,8 +98,15 @@ function logScoreChange(data) {
     // Add a unique message ID to help with deduplication
     const messageId = `${now}-${Math.random().toString(36).substring(2, 10)}`;
     
-    // Send the message with a timeout to ensure we don't block indefinitely
-    const sendMessagePromise = new Promise((resolve) => {
+    console.log("Attempting to log score change:", data);
+    
+    // Make sure the log tab exists first
+    chrome.runtime.sendMessage({
+      action: 'ensureLogTabExists'
+    }, (logTabResponse) => {
+      console.log("Log tab check response:", logTabResponse);
+      
+      // Now send the actual score change message
       chrome.runtime.sendMessage({
         action: 'logScoreChange',
         messageId: messageId,
@@ -106,24 +114,29 @@ function logScoreChange(data) {
       }, (response) => {
         if (response && response.success) {
           console.log('Score change logged successfully');
-          resolve(true);
         } else {
           console.warn('Log response issue:', response);
-          resolve(false);
+          
+          // Try once more with a delay if it failed
+          setTimeout(() => {
+            chrome.runtime.sendMessage({
+              action: 'logScoreChange',
+              messageId: messageId,
+              data: data,
+              retry: true
+            });
+          }, 1000);
         }
       });
-      
-      // Safety timeout
-      setTimeout(() => {
-        console.log('Log message timeout - continuing anyway');
-        resolve(false);
-      }, 3000);
     });
     
-    // We use the promise but don't block execution
-    sendMessagePromise.catch(error => {
-      console.error('Error sending log message:', error);
-    });
+    // Safety timeout to ensure processing completes
+    setTimeout(() => {
+      console.log('Ensuring message processing is complete');
+    }, 3000);
+    
+    // Remove reference to non-existent sendMessagePromise
+    // No need to wait for any promise, we're using callbacks
   } catch (error) {
     console.error('Error in logScoreChange:', error);
   }
@@ -403,22 +416,63 @@ function sendMessageToBackground() {
 
 // Debug helper function to test event triggering
 function debugTriggerTestEvent() {
-  const testDiv = document.querySelector('.sport-base-event__main--FHhdx');
-  if (testDiv) {
-    const scoreChild = testDiv.querySelector('.event-block-score__score--r0ZU9');
-    if (scoreChild) {
-      console.log('Debug: Manually triggering test event');
-      const parentDiv = testDiv;
-      const currentScore = "2:1";
-      const sportEventNameElement = parentDiv.querySelector('a.sport-event__name--YAs00');
-      const sportEventName = sportEventNameElement ? sportEventNameElement.textContent.trim() : 'Team A — Team B';
-      
-      // For debug purposes, alternate between home and away team scoring
-      const testTime = new Date().getSeconds();
-      const scoringTeam = (testTime % 2 === 0) ? "home" : "away";
-      
-      // Process a test score change
-      processSafeScoreChange(scoreChild, parentDiv, currentScore, sportEventName, scoringTeam);
+  try {
+    console.log('Debug: Manually triggering test event');
+    
+    // Try to find a real element on the page first
+    const testDiv = document.querySelector('.sport-base-event__main--FHhdx');
+    
+    if (testDiv) {
+      const scoreChild = testDiv.querySelector('.event-block-score__score--r0ZU9');
+      if (scoreChild) {
+        const parentDiv = testDiv;
+        const currentScore = "2:1";
+        const sportEventNameElement = parentDiv.querySelector('a.sport-event__name--YAs00');
+        const sportEventName = sportEventNameElement ? sportEventNameElement.textContent.trim() : 'Team A — Team B';
+        
+        // For debug purposes, alternate between home and away team scoring
+        const testTime = new Date().getSeconds();
+        const scoringTeam = (testTime % 2 === 0) ? "home" : "away";
+        
+        // Process a test score change
+        processSafeScoreChange(scoreChild, parentDiv, currentScore, sportEventName, scoringTeam);
+        return;
+      }
+    }
+    
+    // Fallback if no real elements found - create a synthetic event
+    console.log('No Fonbet elements found, creating synthetic test event');
+    
+    // Create a synthetic event with test data
+    const syntheticData = {
+      eventName: 'Test Match',
+      score: '2:1',
+      message: '<b>Test Team 1</b> — Test Team 2',
+      isScoreChange: true,
+      isHtml: true,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Log directly
+    logScoreChange(syntheticData);
+    
+  } catch (error) {
+    console.error('Error in debug test function:', error);
+    
+    // Try direct messaging as last resort
+    try {
+      chrome.runtime.sendMessage({
+        action: 'logScoreChange',
+        data: {
+          eventName: 'Error Recovery Test',
+          score: '1:0',
+          message: 'Fallback test after error',
+          isScoreChange: true,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (e) {
+      console.error('Even fallback messaging failed:', e);
     }
   }
 }

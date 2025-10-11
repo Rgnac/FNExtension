@@ -5,26 +5,26 @@ let logCount = 0;
 const processedMessages = {};
 
 // Listen for messages from the background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Log page received message:', message);
+chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+  console.log('Log page received message:', JSON.stringify(message).substring(0, 200));
   
   // Handle ping messages for checking if the page is ready
   if (message.ping === true) {
-    console.log("Received ping - responding");
+    console.log("Received ping - responding with ready status");
     sendResponse({ pong: true, ready: true });
     return true;
   }
   
   try {
     if (message.action === 'logScoreChange') {
+      console.log('Received logScoreChange message with data:', message.data);
+      
       // Use message ID or create a content hash for deduplication
-      const messageKey = message.messageId || 
-                        JSON.stringify(message.data);
+      const messageKey = message.messageId || JSON.stringify(message.data);
       
       // Check for duplicates (only in the last 5 seconds)
       const now = Date.now();
-      if (processedMessages[messageKey] && 
-          (now - processedMessages[messageKey] < 5000)) {
+      if (processedMessages[messageKey] && (now - processedMessages[messageKey] < 5000)) {
         console.log('Duplicate message detected in log.js - ignoring');
         sendResponse({ success: true, duplicate: true });
         return true;
@@ -33,10 +33,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Mark this message as processed with timestamp
       processedMessages[messageKey] = now;
       
-      // Add the log entry
-      addLogEntry(message.data);
+      try {
+        // Add the log entry - wrapped in try/catch to ensure we don't fail completely
+        addLogEntry(message.data);
+        console.log('Log entry added successfully');
+      } catch (entryError) {
+        console.error('Error adding log entry:', entryError);
+      }
       
-      // Clean up old entries
+      // Clean up old entries in the processed messages cache
       for (const key in processedMessages) {
         if (now - processedMessages[key] > 30000) { // 30 seconds
           delete processedMessages[key];
@@ -45,6 +50,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       
       // Send success response
       sendResponse({ success: true });
+      return true;
     }
   } catch (error) {
     console.error('Error processing message:', error);
@@ -56,20 +62,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Function to add a log entry to the page
 function addLogEntry(data) {
-  const logsContainer = document.getElementById('logs');
-  
-  // Remove the "no logs" message if it's the first log
-  if (logCount === 0) {
-    logsContainer.innerHTML = '';
-  }
+  try {
+    console.log('Adding log entry:', data);
+    
+    const logsContainer = document.getElementById('logs');
+    if (!logsContainer) {
+      console.error('ERROR: Logs container not found when adding entry');
+      
+      // Try to find or create container as fallback
+      const scoreLogContainer = document.querySelector('.score-log-container');
+      if (scoreLogContainer) {
+        const newLogsContainer = document.createElement('div');
+        newLogsContainer.id = 'logs';
+        scoreLogContainer.appendChild(newLogsContainer);
+        console.log('Created new logs container as fallback');
+      }
+    }
+    
+    // Get the container again (might have been created above)
+    const container = document.getElementById('logs') || document.body;
+    
+    // Remove the "no logs" message if it's the first log
+    if (logCount === 0 && container) {
+      const noLogs = container.querySelector('.no-logs');
+      if (noLogs) {
+        noLogs.remove();
+      }
+    }
   
   // Create log entry element
   const logEntry = document.createElement('div');
   logEntry.className = 'log-entry';
+  
+  // Add highlight class for score changes
   if (data.isScoreChange) {
     logEntry.classList.add('highlight');
-    // Play sound notification for score changes
-    playNotificationSound();
+    
+    // Play sound notification for score changes - but only if not called from test button
+    // The test button already calls playNotificationSound() separately
+    if (!data.fromTestButton) {
+      console.log('Fonbet score change detected - attempting to play sound');
+      try {
+        if (typeof playNotificationSound === 'function') {
+          // Use the main sound function if it exists
+          playNotificationSound();
+        } else {
+          // Fallback to simple sound
+          const audio = new Audio(chrome.runtime.getURL('sounds/button-44.mp3'));
+          audio.play().catch(e => console.error('Sound play error:', e));
+        }
+      } catch (e) {
+        console.error('Sound error caught:', e);
+      }
+    }
   }
   
   // Create timestamp
@@ -113,9 +158,17 @@ function addLogEntry(data) {
   // Append all elements
   logEntry.appendChild(timestamp);
   logEntry.appendChild(content);
-  logsContainer.insertBefore(logEntry, logsContainer.firstChild);
   
+  // Insert the entry at the top of the logs container
+  console.log('Adding log entry to DOM, container:', logsContainer);
+  logsContainer.insertBefore(logEntry, logsContainer.firstChild);
+  console.log('Entry added, current log count:', logCount);
+  
+  // Increment log count
   logCount++;
+  } catch (error) {
+    console.error('Error in addLogEntry function:', error);
+  }
 }
 
 // Send a message to the background script to let it know the log page is ready
@@ -129,19 +182,153 @@ function addStartupMessage() {
   });
 }
 
+// Preload sound
+let notificationSound = null;
+
+// Initialize notification sound - called both at startup and when needed
+function initNotificationSound() {
+  if (!notificationSound) {
+    console.log('Initializing notification sound');
+    try {
+      // Create a new Audio element
+      notificationSound = new Audio(chrome.runtime.getURL('sounds/button-44.mp3'));
+      
+      // Add event listeners for better debugging
+      notificationSound.addEventListener('canplaythrough', () => {
+        console.log('Sound loaded and ready to play');
+      });
+      
+      notificationSound.addEventListener('error', (e) => {
+        console.error('Error loading sound:', e);
+      });
+      
+      // Preload the sound
+      notificationSound.load();
+      
+      // Test play and immediately mute to force browser audio initialization
+      // This can help overcome browsers' autoplay restrictions
+      setTimeout(() => {
+        const originalVolume = notificationSound.volume;
+        notificationSound.volume = 0;
+        notificationSound.play().then(() => {
+          console.log('Silent test play succeeded');
+          notificationSound.pause();
+          notificationSound.currentTime = 0;
+          notificationSound.volume = originalVolume;
+        }).catch(e => {
+          console.log('Silent test play failed (expected in some browsers):', e);
+        });
+      }, 1000);
+    } catch (e) {
+      console.error('Exception initializing sound:', e);
+    }
+  }
+}
+
 // Add a startup message when the page loads
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
+  console.log("DOM Content Loaded - initializing log page");
+  
+  // Verify logs container exists
+  const logsContainer = document.getElementById('logs');
+  if (!logsContainer) {
+    console.error("Critical error: logs container not found!");
+    // Try to create it if missing
+    const scoreLogContainer = document.querySelector('.score-log-container');
+    if (scoreLogContainer) {
+      const newLogsContainer = document.createElement('div');
+      newLogsContainer.id = 'logs';
+      newLogsContainer.innerHTML = '<div class="no-logs">No changes detected yet. Keep this tab open to record changes.</div>';
+      scoreLogContainer.appendChild(newLogsContainer);
+      console.log("Created new logs container");
+    }
+  } else {
+    console.log("Logs container found and ready");
+  }
+  
   // Add startup message
   addStartupMessage();
   
-  // Let the background script know we're ready (simple approach)
+  // Let the background script know we're ready
   chrome.runtime.sendMessage({ 
     action: 'logPageReady',
     timestamp: Date.now()
+  }, function(response) {
+    console.log("Sent logPageReady message, response:", response);
   });
+  
+  // Try to initialize sound system
+  try {
+    // First try to use the standard function
+    if (typeof initNotificationSound === 'function') {
+      initNotificationSound();
+      console.log("Sound system initialized");
+    } else {
+      // Simple fallback
+      const audio = new Audio(chrome.runtime.getURL('sounds/button-44.mp3'));
+      audio.volume = 0;
+      audio.load();
+      console.log("Fallback sound initialization");
+    }
+  } catch (e) {
+    console.error("Failed to initialize sound:", e);
+  }
   
   // Initialize the Tunis button functionality
   initTunisD1();
+  
+  // Set up test sound button
+  const testSoundBtn = document.getElementById('test-sound-btn');
+  if (testSoundBtn) {
+    console.log("Found test sound button, adding click listener");
+    testSoundBtn.addEventListener('click', function() {
+      console.log("Test sound button clicked");
+      
+      // Play notification sound
+      playNotificationSound();
+      
+      // Visual feedback
+      testSoundBtn.textContent = "Playing...";
+      setTimeout(function() {
+        testSoundBtn.textContent = "Test Sound";
+      }, 1000);
+    });
+  } else {
+    console.warn("Test sound button not found in DOM");
+  }
+  
+  // Set up test log entry button
+  const testLogBtn = document.getElementById('test-log-btn');
+  if (testLogBtn) {
+    console.log("Found test log button, adding click listener");
+    testLogBtn.addEventListener('click', function() {
+      console.log("Test log button clicked");
+      
+      // Add a test log entry
+      addLogEntry({
+        eventName: 'Test Goal',
+        score: '1:0',
+        message: '<b>Test Team 1</b> — Test Team 2',
+        isScoreChange: true,
+        isHtml: true,
+        timestamp: new Date().toISOString(),
+        fromTestButton: true // Flag to avoid duplicate sound
+      });
+      
+      // Play notification sound - only once
+      playNotificationSound();
+      
+      // Visual feedback
+      testLogBtn.textContent = "Added!";
+      setTimeout(function() {
+        testLogBtn.textContent = "Test Log Entry";
+      }, 1000);
+    });
+  } else {
+    console.warn("Test log button not found in DOM");
+  }
+  
+  console.log("Log page initialization complete");
 });
 
 // Initialize Tunis functionality
@@ -595,11 +782,91 @@ function initTunisD1() {
   
   // Function to play notification sound
   function playNotificationSound() {
-    // Create audio element
-    const audio = new Audio(chrome.runtime.getURL('sounds/button-44.mp3'));
-    
-    // Play sound
-    audio.play().catch(e => console.error('Error playing sound:', e));
+    try {
+      console.log('Playing notification sound');
+      
+      // Ensure sound is initialized
+      if (!notificationSound) {
+        initNotificationSound();
+      }
+      
+      // Try different methods to play the sound
+      playSound().catch(e => {
+        console.error('Primary sound method failed, trying alternative:', e);
+        playAlternativeSound();
+      });
+    } catch (e) {
+      console.error('Exception in playNotificationSound:', e);
+      playAlternativeSound();
+    }
+  }
+  
+  // Primary method to play sound
+  function playSound() {
+    return new Promise((resolve, reject) => {
+      try {
+        // Check if sound is initialized
+        if (!notificationSound) {
+          notificationSound = new Audio(chrome.runtime.getURL('sounds/button-44.mp3'));
+        }
+        
+        // Reset sound to beginning in case it was already played
+        notificationSound.currentTime = 0;
+        notificationSound.volume = 1.0;
+        
+        // Try to play the sound
+        const playPromise = notificationSound.play();
+        
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            console.log('Sound played successfully');
+            resolve();
+          }).catch(error => {
+            console.error('Error playing sound:', error);
+            reject(error);
+          });
+        } else {
+          console.log('Play promise is undefined, assuming success');
+          resolve();
+        }
+      } catch (e) {
+        console.error('Exception playing sound:', e);
+        reject(e);
+      }
+    });
+  }
+  
+  // Alternative method to play sound as a fallback
+  function playAlternativeSound() {
+    try {
+      console.log('Using alternative sound method');
+      
+      // Create a new audio element each time
+      const audio = new Audio();
+      audio.src = chrome.runtime.getURL('sounds/button-44.mp3');
+      audio.volume = 1.0;
+      
+      // Force user interaction simulation (may help with autoplay restrictions)
+      document.documentElement.addEventListener('mousedown', playOnUserAction, { once: true });
+      document.documentElement.addEventListener('keydown', playOnUserAction, { once: true });
+      document.documentElement.addEventListener('touchstart', playOnUserAction, { once: true });
+      
+      function playOnUserAction() {
+        audio.play().catch(e => console.error('User action play failed:', e));
+        // Remove the listeners
+        document.documentElement.removeEventListener('mousedown', playOnUserAction);
+        document.documentElement.removeEventListener('keydown', playOnUserAction);
+        document.documentElement.removeEventListener('touchstart', playOnUserAction);
+      }
+      
+      // Also try to play immediately
+      audio.play().catch(e => {
+        console.log('Immediate play failed (expected), waiting for user action');
+      });
+      
+    } catch (e) {
+      console.error('Exception in playAlternativeSound:', e);
+    }
   }
   
   // Function to set up the refresh interval

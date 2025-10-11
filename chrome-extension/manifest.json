@@ -21,21 +21,25 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["*://*.fonbet.ru/*", "*://*.fonbet.com/*"],
       "js": ["content.js"]
     }
   ],
   "permissions": [
     "storage",
     "activeTab",
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "host_permissions": [
-    "https://live.kawarji.com/"
+    "https://live.kawarji.com/",
+    "*://*.fonbet.ru/*",
+    "*://*.fonbet.com/*",
+    "*://*.fupa.net/*"
   ],
   "web_accessible_resources": [
     {
-      "resources": ["log.html", "log.js"],
+      "resources": ["log.html", "log.js", "sounds/*.mp3", "german-scraper.js", "german-scraper.css"],
       "matches": ["<all_urls>"]
     }
   ]
