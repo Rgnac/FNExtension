@@ -273,7 +273,7 @@ function initFonbetNotification() {
 
   // Set initial font color for all score elements
   targetDivs.forEach(parentDiv => {
-    const scoreChild = parentDiv.querySelector('.event-block-score__score--r0ZU9');
+    const scoreChild = parentDiv.querySelector('.event-block-score--QKiav');
     
     if (scoreChild) {
       // Create a unique ID for this element to track it
