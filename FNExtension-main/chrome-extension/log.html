@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fonbet Change Log</title>
+  <link rel="stylesheet" href="dark-mode.css">
+  <link rel="stylesheet" href="german-scraper.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8f8f8;
+      color: #333;
+    }
+    h1 {
+      color: #1a73e8;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .log-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .log-entry {
+      background-color: white;
+      border-left: 4px solid #1a73e8;
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      animation: fadeIn 0.5s;
+    }
+    .log-entry.highlight {
+      border-left-color: #f44336;
+      background-color: #fff8f8;
+    }
+    .timestamp {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+    .content {
+      font-size: 14px;
+    }
+    .score {
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .score.changed {
+      color: #f44336;
+    }
+    .event-name {
+      font-weight: bold;
+    }
+    .event-message {
+      margin-top: 5px;
+      padding: 5px 8px;
+      background-color: #f8f8f8;
+      border-left: 3px solid #4caf50;
+      font-size: 18px;
+      font-style: italic;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .no-logs {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    .status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background-color: #4caf50;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .controls {
+      margin-bottom: 20px;
+    }
+    
+    .action-btn {
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .action-btn:hover {
+      background-color: #185abc;
+    }
+    
+    .content-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    
+    .score-log-container {
+      flex: 1;
+    }
+    
+    .tunis-d1-container {
+      flex: 1;
+      max-width: 400px;
+      padding: 15px;
+      background-color: #fff;
+      border: 2px solid #1a73e8;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      max-height: 800px;
+      overflow-y: auto;
+    }
+    
+    .tunis-d1-content {
+      font-size: 14px;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+    
+    .error {
+      text-align: center;
+      padding: 20px;
+      color: #d32f2f;
+    }
+    
+    /* Styles for Tunisia content */
+    .match-container {
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+      border: 2px solid #ccc;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+      background-color: white;
+      transition: background-color 0.3s ease;
+      position: relative;
+    }
+    
+    .hide-match-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background-color: #f44336;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    
+    .hide-match-btn:hover {
+      opacity: 1;
+    }
+    
+    .match-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: bold;
+      padding: 10px;
+      margin: -10px -10px 10px -10px;
+      background-color: #f5f9ff;
+      border-radius: 3px 3px 0 0;
+    }
+    
+    .team {
+      flex: 1;
+      padding: 5px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+    }
+    
+    .team1 {
+      padding-right: 10px;
+      margin-right: 5px;
+    }
+    
+    .team2 {
+      padding-left: 10px;
+      margin-left: 5px;
+    }
+    
+    .score {
+      font-size: 1.3em;
+      padding: 5px 15px;
+      margin: 0 5px;
+      min-width: 60px;
+      font-weight: bold;
+      color: white;
+      background-color: #1a73e8;
+      border-radius: 4px;
+      border: 1px solid #0d47a1;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    
+    .match-details {
+      padding: 10px;
+      font-size: 0.9em;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      background-color: #fafafa;
+    }
+    
+    .match-changed {
+      font-weight: bold;
+    }
+    
+    .highlight-change {
+      background-color: #ffebee;
+      border: 2px solid #e53935 !important;
+      box-shadow: 0 0 8px rgba(229, 57, 53, 0.5) !important;
+      animation: pulse 5s;
+    }
+    
+    @keyframes pulse {
+      0% { background-color: #ffebee; border-color: #e53935; }
+      50% { background-color: #ffcdd2; border-color: #c62828; }
+      100% { background-color: white; border-color: #ccc; }
+    }
+    
+    /* Hide the original elements in details */
+    .match-details .resultat_equipe,
+    .match-details .resultat_score,
+    .show-live-detail {
+      display: none !important;
+    }
+    
+    /* Make sure live-details is visible */
+    .live-details {
+      display: block !important;
+    }
+    
+    /* Red cards and Missed penalties formatting - one line display */
+    .live-cr,
+    .live-pr,
+    .live-penr {
+      display: flex !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      margin-bottom: 8px !important;
+      padding: 5px !important;
+      border-radius: 4px !important;
+    }
+    
+    /* Red cards specific style */
+    .live-cr {
+      border: 1px solid #e74c3c !important;
+      background-color: #fff8f8 !important;
+    }
+    
+    /* Missed penalties specific style */
+    .live-pr {
+      border: 1px solid #f39c12 !important;
+      background-color: #fff9e6 !important;
+    }
+    
+    /* Penalties specific style */
+    .live-penr {
+      border: 1px solid #3498db !important;
+      background-color: #f0f9ff !important;
+      padding: 8px !important;
+      margin-bottom: 10px !important;
+    }
+    
+    /* Center the 'Missed pens' text */
+    .live-penr .col-lg-2,
+    .live-penr .col-md-2,
+    .live-penr .col-sm-2,
+    .live-penr .col-xs-2 {
+      text-align: center !important;
+      font-weight: bold !important;
+      color: #2980b9 !important;
+    }
+    
+    /* Style for penalty player names */
+    .live-penr .col-lg-5 .fa,
+    .live-penr .col-md-5 .fa,
+    .live-penr .col-sm-5 .fa,
+    .live-penr .col-xs-5 .fa {
+      margin-right: 5px !important;
+      color: #e74c3c !important;
+    }
+    
+    /* Player name styling in penalties section */
+    .live-penr .col-lg-5.text-left,
+    .live-penr .col-md-5.text-left,
+    .live-penr .col-sm-5.text-left,
+    .live-penr .col-xs-5.text-left {
+      display: block !important;
+      text-align: right !important;
+      font-size: 13px !important;
+      line-height: 1.4 !important;
+    }
+    
+    .live-cr .col-lg-5,
+    .live-cr .col-md-5,
+    .live-cr .col-sm-5,
+    .live-cr .col-xs-5,
+    .live-pr .col-lg-5,
+    .live-pr .col-md-5,
+    .live-pr .col-sm-5,
+    .live-pr .col-xs-5,
+    .live-penr .col-lg-5,
+    .live-penr .col-md-5,
+    .live-penr .col-sm-5,
+    .live-penr .col-xs-5 {
+      flex: 1 !important;
+      float: none !important;
+      width: auto !important;
+    }
+    
+    .live-cr .col-lg-2,
+    .live-cr .col-md-2,
+    .live-cr .col-sm-2,
+    .live-cr .col-xs-2,
+    .live-pr .col-lg-2,
+    .live-pr .col-md-2,
+    .live-pr .col-sm-2,
+    .live-pr .col-xs-2,
+    .live-penr .col-lg-2,
+    .live-penr .col-md-2,
+    .live-penr .col-sm-2,
+    .live-penr .col-xs-2 {
+      flex: 0 0 auto !important;
+      float: none !important;
+      width: auto !important;
+      padding: 0 10px !important;
+    }
+    
+    .live-cr .clearfix,
+    .live-pr .clearfix,
+    .live-penr .clearfix {
+      display: none !important;
+    }
+    
+    /* Red square icon styling */
+    .fa-square.red {
+      color: #e74c3c !important;
+      margin: 0 5px !important;
+    }
+    
+    /* Fix RTL issues with text alignment in live sections */
+    .live-cr .text-right,
+    .live-pr .text-right,
+    .live-penr .text-right,
+    .live-details .text-right {
+      text-align: left !important;
+    }
+    
+    .live-cr .text-left,
+    .live-pr .text-left,
+    .live-penr .text-left,
+    .live-details .text-left {
+      text-align: right !important;
+    }
+    
+    /* Ensure player names in penalties are properly displayed */
+    .live-penr .text-left {
+      white-space: normal !important; /* Allow text to wrap */
+      word-break: break-word !important;
+      line-height: 1.4 !important;
+    }
+    
+    /* Apply text alignment to common elements that might need it */
+    .match-details .col-md-4,
+    .match-details .col-xs-4 {
+      text-align: center !important;
+    }
+    
+    /* RTL fixes - swap left and right alignment */
+    .match-details .col-md-5:first-child,
+    .match-details .col-xs-5:first-child {
+      text-align: left !important;
+    }
+    
+    .match-details .col-md-5:last-child,
+    .match-details .col-xs-5:last-child {
+      text-align: right !important;
+    }
+    
+    /* Make images responsive */
+    .match-container img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #ddd;
+      padding: 2px;
+    }
+    
+    /* Add borders to other common elements */
+    .match-details .row {
+      border-bottom: 1px solid #eee;
+      padding: 5px 0;
+      margin: 0;
+    }
+    
+    .match-details .live-details > div {
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+    }
+    
+    /* Text alignment classes */
+    .text-left {
+      text-align: left !important;
+    }
+    
+    .text-center {
+      text-align: center !important;
+    }
+    
+    .text-right {
+      text-align: right !important;
+    }
+    
+    /* RTL specific overrides with higher specificity */
+    .match-details .live-details .col-lg-5.text-left,
+    .match-details .live-details .col-md-5.text-left,
+    .match-details .live-details .col-sm-5.text-left,
+    .match-details .live-details .col-xs-5.text-left {
+      text-align: right !important;
+    }
+    
+    .match-details .live-details .col-lg-5.text-right,
+    .match-details .live-details .col-md-5.text-right,
+    .match-details .live-details .col-sm-5.text-right,
+    .match-details .live-details .col-xs-5.text-right {
+      text-align: left !important;
+    }
+    
+    @media (max-width: 768px) {
+      .content-container {
+        flex-direction: column;
+      }
+      
+      .tunis-d1-container,
+      .german-scraper-container {
+        max-width: none;
+        margin-top: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="log-container">
+    <h1>FNExtension</h1>
+    <div class="status" id="status">Monitoring Active</div>
+    <div id="theme-toggle" class="theme-toggle">Dark Mode</div>
+    <div class="controls">
+      <button id="add-tunis-d1-btn" class="action-btn">Add Tunisia Column</button>
+      <button id="german-scraper-btn" class="action-btn" style="margin-left: 10px; background-color: #4caf50;">German Scraper</button>
+      <button id="test-sound-btn" class="action-btn" style="margin-left: 10px;">Test Sound</button>
+      <button id="test-log-btn" class="action-btn" style="margin-left: 10px; background-color: #4caf50;">Test Log Entry</button>
+      <div class="refresh-controls" id="refresh-controls" style="display: none; margin-top: 10px;">
+        <label for="refresh-interval">Refresh interval (minutes): </label>
+        <input type="number" id="refresh-interval" min="1" max="60" value="5" style="width: 60px; margin-right: 10px;">
+        <button id="apply-refresh-btn" class="action-btn">Apply</button>
+        <button id="refresh-now-btn" class="action-btn" style="margin-left: 5px;">Refresh Now</button>
+      </div>
+    </div>
+    <div class="content-container">
+      <div class="score-log-container">
+        <div id="logs">
+          <div class="no-logs">No changes detected yet. Keep this tab open to record changes.</div>
+        </div>
+      </div>
+      <div id="tunis-d1-container" class="tunis-d1-container" style="display: none;">
+        <h2>Tunis</h2>
+        <div id="tunis-d1-content" class="tunis-d1-content">
+          <div class="loading">Loading Tunisia content...</div>
+        </div>
+      </div>
+      <div id="german-scraper-container" class="german-scraper-container" style="display: none;">
+        <div class="german-header">
+          <h2>German Scraper</h2>
+          <div class="german-refresh-info">
+            Last refresh: <span id="german-last-refresh-time">-</span><br>
+            Next refresh: <span id="german-next-refresh-time">-</span>
+          </div>
+        </div>
+        <div class="german-controls">
+          <div class="german-url-input">
+            <input type="text" id="german-url-input" placeholder="Enter fupa.net URL (e.g., https://www.fupa.net/match/sv-schalding-heining-m1-fc-deisenhofen-m1-251011)" />
+            <button id="german-add-url-btn">Add</button>
+          </div>
+          <div id="german-url-list" class="german-url-list">
+            <!-- URLs will be added here dynamically -->
+          </div>
+          <div id="german-refresh-controls" class="german-refresh-controls">
+            <label for="german-refresh-interval">Refresh interval (minutes): </label>
+            <input type="number" id="german-refresh-interval" min="1" max="60" value="5" />
+            <button id="german-apply-refresh-btn">Apply</button>
+            <button id="german-refresh-now-btn">Refresh Now</button>
+          </div>
+        </div>
+        <div id="german-content">
+          <!-- Content will be loaded here -->
+          <div class="no-data">No URLs added yet. Add a fupa.net match URL above to get started.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="log.js"></script>
+  <script src="log-debug.js"></script>
+  <script src="dark-mode-fix.js"></script>
+  <script src="german-scraper.js"></script>
+  <script>
+    // Original dark mode toggle functionality - Using a self-executing function for immediate execution
+    (function() {
+      console.log("Initializing dark mode");
+      
+      function initDarkMode() {
+        const themeToggle = document.getElementById('theme-toggle');
+        if (!themeToggle) {
+          console.error("Theme toggle not found in DOM");
+          return;
+        }
+        
+        console.log("Theme toggle found:", themeToggle);
+        const body = document.body;
+        
+        // Check for saved theme preference or use system preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          console.log("Applying dark mode from saved preference");
+          body.classList.add('dark-mode');
+          themeToggle.textContent = 'Light Mode';
+        }
+        
+        // Toggle theme when button is clicked
+        themeToggle.addEventListener('click', function(e) {
+          console.log("Theme toggle clicked");
+          body.classList.toggle('dark-mode');
+          const isDarkMode = body.classList.contains('dark-mode');
+          console.log("Dark mode is now:", isDarkMode);
+          
+          // Update button text
+          themeToggle.textContent = isDarkMode ? 'Light Mode' : 'Dark Mode';
+          
+          // Save preference
+          localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+        });
+      }
+      
+      // Try immediately
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDarkMode);
+      } else {
+        initDarkMode();
+      }
+      
+      // Also try after a delay as a fallback
+      setTimeout(initDarkMode, 1000);
+    })();
+  </script>
+</body>
+</html>
